@@ -25,13 +25,27 @@ fn main() {
 fn handle_client(mut stream: TcpStream) {
     let mut buffer = [0;1024];
 
-    stream.read(&mut buffer).expect("connection sut down unexpectedly");
+    let read_result = stream.read(&mut buffer);
+
+    match read_result {
+        Ok(_) => println!("reading succefull"),
+        Err(_) => println!("error reading request")
+    }
 
     println!("server req : {}",String::from_utf8_lossy(&buffer));
     
     let res = "HTTP/1.1 200 OK\r\n\r\nHello from sync Rust server";
-    stream.write_all(res.as_bytes()).expect("error responding");
-    stream.flush().expect("error flushing");
+    let write_result = stream.write_all(res.as_bytes());
+    match write_result {
+        Ok(_) => println!("response sent succefully"),
+        Err(_) => println!("error sending response")
+    }
+    let flush_result = stream.flush();
+
+    match flush_result {
+        Ok(_) => println!("flush succefully"),
+        Err(_) => println!("error flushing"),
+    }
 
 
 }
