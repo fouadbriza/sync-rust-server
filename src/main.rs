@@ -9,7 +9,7 @@ fn main() {
         match stream {
             Ok(stream) => {
                 println!("connection established");
-                handle_client(stream);
+                handle_client_percistent(stream);
 
             },
             Err(err)=> {
@@ -29,7 +29,9 @@ fn handle_client(mut stream: TcpStream) {
 
     match read_result {
         Ok(_) => println!("reading succefull"),
-        Err(_) => println!("error reading request")
+        Err(_) => {println!("error reading request");
+        return
+        }
     }
 
     println!("server req : {}",String::from_utf8_lossy(&buffer));
@@ -47,5 +49,47 @@ fn handle_client(mut stream: TcpStream) {
         Err(_) => println!("error flushing"),
     }
 
+
+}
+
+
+fn handle_client_percistent(mut stream: TcpStream) {
+    
+    let mut cpt =0;
+
+    loop {
+        let mut buffer = [0;9999];
+        let req_result = stream.read(&mut buffer);
+        match req_result {
+            Ok(0) => {
+                break
+            },
+            Ok(request)=> {
+                println!("request recieved:\n\n{}",String::from_utf8_lossy(&buffer[..request]))
+            },
+            Err(_) => {println!("error recieving the request");
+            break
+            }
+        }
+        let body = format!("Hello {} from sync Rust server", cpt);
+        cpt += 1;
+        
+        let res_message = format!(
+            "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: {}\r\n\r\n{}",
+            body.len(),
+            body
+        );
+        cpt+=1;
+        
+        let res_result = stream.write_all(res_message.as_bytes());
+        match res_result {
+            Ok(response)=> {
+                println!("respo recieved, bytes: {:?}",res_result)
+            },
+            Err(_) => println!("error sending the response")
+        }
+        stream.flush();
+
+    }
 
 }
