@@ -4,12 +4,20 @@ use std::io::{Read, Write};
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:8080").expect("error binding to the port");
+    let mut thread_count = 0;
 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
+                
+                println!("*****THREAD NUM: {}",thread_count);
+
+                std::thread::spawn(move || {
                 println!("connection established");
-                handle_client_percistent(stream);
+                handle_client_persistent(stream);
+                });
+                thread_count+=1;
+                
 
             },
             Err(err)=> {
@@ -28,7 +36,7 @@ fn handle_client(mut stream: TcpStream) {
     let read_result = stream.read(&mut buffer);
 
     match read_result {
-        Ok(_) => println!("reading succefull"),
+        Ok(_) => println!("reading successful"),
         Err(_) => {println!("error reading request");
         return
         }
@@ -39,13 +47,13 @@ fn handle_client(mut stream: TcpStream) {
     let res = "HTTP/1.1 200 OK\r\n\r\nHello from sync Rust server";
     let write_result = stream.write_all(res.as_bytes());
     match write_result {
-        Ok(_) => println!("response sent succefully"),
+        Ok(_) => println!("response sent successfully"),
         Err(_) => println!("error sending response")
     }
     let flush_result = stream.flush();
 
     match flush_result {
-        Ok(_) => println!("flush succefully"),
+        Ok(_) => println!("flush successful"),
         Err(_) => println!("error flushing"),
     }
 
@@ -53,7 +61,7 @@ fn handle_client(mut stream: TcpStream) {
 }
 
 
-fn handle_client_percistent(mut stream: TcpStream) {
+fn handle_client_persistent(mut stream: TcpStream) {
     
     let mut cpt =0;
 
@@ -65,9 +73,9 @@ fn handle_client_percistent(mut stream: TcpStream) {
                 break
             },
             Ok(request)=> {
-                println!("request recieved:\n\n{}",String::from_utf8_lossy(&buffer[..request]))
+                println!("request received:\n\n{}",String::from_utf8_lossy(&buffer[..request]))
             },
-            Err(_) => {println!("error recieving the request");
+            Err(_) => {println!("error receiving the request");
             break
             }
         }
@@ -79,16 +87,23 @@ fn handle_client_percistent(mut stream: TcpStream) {
             body.len(),
             body
         );
-        cpt+=1;
         
         let res_result = stream.write_all(res_message.as_bytes());
         match res_result {
-            Ok(response)=> {
-                println!("respo recieved, bytes: {:?}",res_result)
+            Ok(_)=> {
+                println!("response sent")
             },
-            Err(_) => println!("error sending the response")
+            Err(_) => {println!("error sending the response");
+            break
         }
-        stream.flush();
+        }
+        let flush_result = stream.flush();
+        match flush_result {
+            Ok(_) =>{println!("flush successful")}
+            Err(_) => {println!("error flushing");
+            break
+        }
+    }   
 
     }
 
