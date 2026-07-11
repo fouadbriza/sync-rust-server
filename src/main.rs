@@ -1,6 +1,6 @@
 use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write};
-
+use std::fs;
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:8080").expect("error binding to the port");
@@ -68,27 +68,29 @@ fn handle_client_persistent(mut stream: TcpStream) {
     loop {
         let mut buffer = [0;9999];
         let req_result = stream.read(&mut buffer);
-        match req_result {
+        let response = match req_result {
             Ok(0) => {
                 break
             },
             Ok(request)=> {
-                println!("request received:\n\n{}",String::from_utf8_lossy(&buffer[..request]))
+                let request_string = String::from_utf8_lossy(&buffer[..request]);
+                println!("request received:\n\n{}",request_string);
+                handle_routing(&request_string)
             },
             Err(_) => {println!("error receiving the request");
             break
             }
-        }
-        let body = format!("Hello {} from sync Rust server", cpt);
-        cpt += 1;
+        };
+        //  let body = format!("Hello {} from sync Rust server", cpt);
+         cpt += 1;
         
-        let res_message = format!(
-            "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: {}\r\n\r\n{}",
-            body.len(),
-            body
-        );
+        // let res_message = format!(
+        //     "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: {}\r\n\r\n{}",
+        //     body.len(),
+        //     body
+        // );
         
-        let res_result = stream.write_all(res_message.as_bytes());
+        let res_result = stream.write_all(response.as_bytes());
         match res_result {
             Ok(_)=> {
                 println!("response sent")
@@ -106,5 +108,25 @@ fn handle_client_persistent(mut stream: TcpStream) {
     }   
 
     }
+
+}
+
+
+
+fn handle_routing(request: &str) -> String {
+
+    let (status,filename) = if request.starts_with("GET / HTTP/1.1") {
+        ("HTTP 200 Ok","html/index.html")
+    }else{
+        ("HTTP 404 NOT FOUND","html/404.html")
+    };
+    let body = fs::read_to_string(filename).unwrap_or_else(|_| { 
+        format!("<h1>500 Internal Error: Missing {} on disk</h1>", filename)
+    });
+
+    format!("{}\r\nConnection: keep-alive\r\nContent-Type: text/html\r\nContent-Length: {}\r\n\r\n{}",
+        status,
+        body.len(),
+        body)
 
 }
